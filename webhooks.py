@@ -51,7 +51,7 @@ def tool2():
     for uczelnia in uczelnie_data:
         if uczelnia['nazwa'].lower() in input_data.lower():
             badania = [badanie['nazwa'] for badanie in badania_data if badanie['uczelnie_id'] == uczelnia['id']]
-            return jsonify({"output": f"Uczelnia: {uczelna['nazwa']}, Badania: {', '.join(badania)}"}), 200
+            return jsonify({"output": f"Uczelnia: {uczelnia['nazwa']}, Badania: {', '.join(badania)}"}), 200
 
     return jsonify({"output": "Nie znaleziono odpowiednich danych."}), 404
 
