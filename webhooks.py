@@ -1,64 +1,65 @@
-import json
 import requests
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Pobieranie danych z URL-i
-osoby_url = "https://letsplay.ag3nts.org/data/osoby.json"
-uczelnie_url = "https://letsplay.ag3nts.org/data/uczelnie.json"
-badania_url = "https://letsplay.ag3nts.org/data/badania.json"
+# Wczytanie danych JSON
+osoby_url = 'https://letsplay.ag3nts.org/data/osoby.json'
+uczelnie_url = 'https://letsplay.ag3nts.org/data/uczelnie.json'
+badania_url = 'https://letsplay.ag3nts.org/data/badania.json'
 
-# Funkcja do pobierania danych JSON z URL
-def load_json_from_url(url):
+def get_data_from_url(url):
     response = requests.get(url)
-    return response.json() if response.status_code == 200 else []
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return {}
 
-# Załaduj dane przy starcie aplikacji
-osoby_data = load_json_from_url(osoby_url)
-uczelnie_data = load_json_from_url(uczelnie_url)
-badania_data = load_json_from_url(badania_url)
+# Pobierz dane
+osoby = get_data_from_url(osoby_url)
+uczelnie = get_data_from_url(uczelnie_url)
+badania = get_data_from_url(badania_url)
 
 @app.route('/api/tool1', methods=['POST'])
 def tool1():
-    data = request.get_json()
-    user_input = data.get("input", "")
+    input_data = request.json.get('input')
 
-    if user_input.startswith("test"):
-        return jsonify({"output": user_input})
+    # Sprawdzenie, czy input jest odpowiednią nazwą osoby, uczelni lub badania
+    result = {}
 
-    # Szukaj w badaniach na temat "podróży w czasie"
-    for projekt in badania_data:
-        if "podróże w czasie" in projekt["tematyka"].lower():
-            uczelnia = projekt["uczelnia"]
-            nazwa = projekt["nazwa_projektu"]
-            return jsonify({
-                "output": f"{uczelnia}: Projekt {nazwa}"
-            })
-    
-    return jsonify({"output": "Nie znaleziono projektu."})
+    if input_data:
+        # Wyszukiwanie w danych "osoby.json"
+        for osoba in osoby:
+            if input_data.lower() in osoba['imie'].lower() or input_data.lower() in osoba['nazwisko'].lower():
+                result['osoba'] = osoba
+                break
+
+        # Wyszukiwanie w danych "uczelnie.json"
+        if not result:
+            for uczelnia in uczelnie:
+                if input_data.lower() in uczelnia['nazwa'].lower():
+                    result['uczelnia'] = uczelnia
+                    break
+
+        # Wyszukiwanie w danych "badania.json"
+        if not result:
+            for badanie in badania:
+                if input_data.lower() in badanie['nazwa'].lower():
+                    result['badania'] = badanie
+                    break
+
+    # Zwracamy wynik
+    if result:
+        return jsonify({"output": result})
+    else:
+        return jsonify({"output": "Nie znaleziono wyników dla podanego zapytania"})
 
 @app.route('/api/tool2', methods=['POST'])
 def tool2():
-    data = request.get_json()
-    user_input = data.get("input", "")
+    input_data = request.json.get('input')
 
-    if user_input.startswith("test"):
-        return jsonify({"output": user_input})
-
-    # Szukaj szczegółów na temat zespołów badawczych
-    for projekt in badania_data:
-        if user_input.lower() in projekt["nazwa_projektu"].lower():
-            # Wyszukaj członków i sponsora
-            zespol = next((z for z in osoby_data if z["projekt"] == projekt["nazwa_projektu"]), None)
-            if zespol:
-                czlonkowie = ", ".join(zespol["czlonkowie"])
-                sponsor = zespol["sponsor"]
-                return jsonify({
-                    "output": f"Członkowie: {czlonkowie}, Sponsor: {sponsor}"
-                })
-    
-    return jsonify({"output": "Brak danych o zespole."})
+    # Zwrócenie danych w formacie JSON
+    return jsonify({"output": input_data})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
